@@ -61,7 +61,7 @@ INSERT INTO Tile VALUES (6, 4, 26, 83, 'PNG data', '2016-11-01 08:00:00', 1);
 -- Select all the user names of the painters
 SELECT userName FROM Painter;
 
--- Select the name of all the canvases created by the painter with user name 'alpa0010'
+-- Select the name of all the canvases created by the painter with user name 'alpha0010'
 SELECT Canvas.name FROM Canvas JOIN Painter ON painterID = Painter.ID WHERE userName = 'alpha0010';
 
 -- Select all the tiles for the canvas with id 1
