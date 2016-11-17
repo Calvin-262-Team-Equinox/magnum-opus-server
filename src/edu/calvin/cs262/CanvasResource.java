@@ -12,7 +12,8 @@ import java.io.IOException;
 import java.sql.*;
 
 @Path("/equinox")
-public class CanvasResource {
+public class CanvasResource
+{
 
     /**
      * a hello-world resource
@@ -23,14 +24,15 @@ public class CanvasResource {
     @GET
     @Path("/hello")
     @Produces("text/plain")
-    public String getClichedMessage() {
+    public String getClichedMessage()
+    {
         return "Hello, Jersey!";
     }
 
     /**
      * GET method that returns a particular tile
      *
-     * @param canvasID the id of the canvas
+     * @param canvasID    the id of the canvas
      * @param xCoordinate the x coordinate of the tile
      * @param yCoordinate the y coordinate of the tile
      * @return a JSON version of the tile record, if any, with the given id
@@ -41,10 +43,13 @@ public class CanvasResource {
     public String getTile(
             @PathParam("canvasID") int canvasID,
             @PathParam("xCoordinate") int xCoordinate,
-            @PathParam("yCoordinate") int yCoordinate) {
-        try {
+            @PathParam("yCoordinate") int yCoordinate)
+    {
+        try
+        {
             return new Gson().toJson(retrieveCanvas(canvasID, xCoordinate, yCoordinate));
-        } catch (Exception e) {
+        } catch (Exception e)
+        {
             e.printStackTrace();
         }
         return null;
@@ -67,24 +72,29 @@ public class CanvasResource {
     private Tile retrieveCanvas(
             int canvasID,
             int xCoordinate,
-            int yCoordinate) throws Exception {
+            int yCoordinate) throws Exception
+    {
         Connection connection = null;
         Statement statement = null;
         ResultSet rs = null;
         Tile tile = null;
-        try {
+        try
+        {
             connection = DriverManager.getConnection(DB_URI, DB_LOGIN_ID, DB_PASSWORD);
             statement = connection.createStatement();
             rs = statement.executeQuery("SELECT `data`, version FROM Tile"
                     + " WHERE canvasID=" + canvasID
                     + " AND xCoordinate=" + xCoordinate
                     + " AND yCoordinate=" + yCoordinate);
-            if (rs.next()) {
+            if (rs.next())
+            {
                 tile = new Tile(rs.getString("data"), rs.getInt("version"));
             }
-        } catch (SQLException e) {
+        } catch (SQLException e)
+        {
             throw (e);
-        } finally {
+        } finally
+        {
             rs.close();
             statement.close();
             connection.close();
@@ -100,7 +110,8 @@ public class CanvasResource {
      * @param args command-line arguments (ignored)
      * @throws IOException
      */
-    public static void main(String[] args) throws IOException {
+    public static void main(String[] args) throws IOException
+    {
         HttpServer server = HttpServerFactory.create("http://localhost:" + PORT + "/");
         server.start();
 
