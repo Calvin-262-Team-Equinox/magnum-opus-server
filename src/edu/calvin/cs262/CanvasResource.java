@@ -5,9 +5,11 @@ import com.sun.jersey.api.container.httpserver.HttpServerFactory;
 import com.sun.net.httpserver.HttpServer;
 
 import javax.ws.rs.GET;
+import javax.ws.rs.POST;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
+import javax.ws.rs.Consumes;
 import java.io.IOException;
 import java.sql.*;
 
@@ -55,6 +57,28 @@ public class CanvasResource
         return null;
     }
 
+    @POST
+    @Path("/update/tile/{canvasID}/{xCoordinate}/{yCoordinate}")
+    @Consumes("application/json")
+    @Produces("application/json")
+    public String updateTile(
+            @PathParam("canvasID") int canvasID,
+            @PathParam("xCoordinate") int xCoordinate,
+            @PathParam("yCoordinate") int yCoordinate,
+            String tileData)
+    {
+        try
+        {
+            Tile tile = new Gson().fromJson(tileData, Tile.class);
+            tile.setVersion(tile.getVersion() + 1); // TODO: Useful processing...
+            return new Gson().toJson(tile);
+        } catch (Exception e)
+        {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
     /* DBMS Utility Functions *********************************************/
 
     /**
@@ -75,17 +99,23 @@ public class CanvasResource
             int yCoordinate) throws Exception
     {
         Connection connection = null;
-        Statement statement = null;
+        PreparedStatement statement = null;
         ResultSet rs = null;
         Tile tile = null;
         try
         {
             connection = DriverManager.getConnection(DB_URI, DB_LOGIN_ID, DB_PASSWORD);
-            statement = connection.createStatement();
-            rs = statement.executeQuery("SELECT `data`, version FROM Tile"
-                    + " WHERE canvasID=" + canvasID
-                    + " AND xCoordinate=" + xCoordinate
-                    + " AND yCoordinate=" + yCoordinate);
+            statement = connection.prepareStatement(
+                    "SELECT data, version FROM Tile"
+                    + " WHERE canvasID = ?"
+                    + " AND xCoordinate = ?"
+                    + " AND yCoordinate = ?"
+            );
+            statement.setInt(1, canvasID);
+            statement.setInt(2, xCoordinate);
+            //noinspection SuspiciousNameCombination
+            statement.setInt(3, yCoordinate);
+            rs = statement.executeQuery();
             if (rs.next())
             {
                 tile = new Tile(rs.getString("data"), rs.getInt("version"));
@@ -116,8 +146,8 @@ public class CanvasResource
         server.start();
 
         System.out.println("Server running...");
-        System.out.println("Web clients should visit: http://localhost:" + PORT + "/monopoly");
-        System.out.println("Android emulators should visit: http://LOCAL_IP_ADDRESS:" + PORT + "/monopoly");
+        System.out.println("Web clients should visit: http://localhost:" + PORT + "/equinox");
+        System.out.println("Android emulators should visit: http://LOCAL_IP_ADDRESS:" + PORT + "/equinox");
         System.out.println("Hit return to stop...");
         //noinspection ResultOfMethodCallIgnored
         System.in.read();
