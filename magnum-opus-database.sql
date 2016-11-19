@@ -30,7 +30,8 @@ CREATE TABLE Tile (
 	yCoordinate integer NOT NULL,
 	data bytea NOT NULL,
 	time timestamp NOT NULL,
-	version integer NOT NULL
+	version integer NOT NULL,
+	UNIQUE (canvasID, xCoordinate, yCoordinate)
 	);
 
 -- Allow users to select data from the tables.
