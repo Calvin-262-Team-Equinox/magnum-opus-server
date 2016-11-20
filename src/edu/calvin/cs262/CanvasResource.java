@@ -198,7 +198,8 @@ public class CanvasResource
             statement = connection.prepareStatement(
                     "INSERT INTO Tile (canvasID, xCoordinate, yCoordinate, data, time, version)"
                             + " VALUES (?, ?, ?, ?, current_timestamp, ?)"
-                            + " ON CONFLICT DO UPDATE SET"
+                            + " ON CONFLICT (canvasID, xCoordinate, yCoordinate)"
+                            + " DO UPDATE SET"
                             + " data = EXCLUDED.data,"
                             + " time = EXCLUDED.time,"
                             + " version = EXCLUDED.version"
