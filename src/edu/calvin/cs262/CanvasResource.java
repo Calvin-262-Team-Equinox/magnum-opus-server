@@ -2,8 +2,8 @@ package edu.calvin.cs262;
 
 import com.google.gson.Gson;
 import com.sun.jersey.api.container.httpserver.HttpServerFactory;
+import com.sun.jersey.core.util.Base64;
 import com.sun.net.httpserver.HttpServer;
-import com.sun.org.apache.xml.internal.security.utils.Base64;
 
 import javax.ws.rs.GET;
 import javax.ws.rs.POST;
@@ -152,7 +152,7 @@ public class CanvasResource
             if (rs.next())
             {
                 tile = new Tile(
-                        Base64.encode(rs.getBytes("data")),
+                        new String(Base64.encode(rs.getBytes("data"))),
                         rs.getInt("version")
                 );
             }

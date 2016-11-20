@@ -1,7 +1,6 @@
 package edu.calvin.cs262;
 
-import com.sun.org.apache.xml.internal.security.exceptions.Base64DecodingException;
-import com.sun.org.apache.xml.internal.security.utils.Base64;
+import com.sun.jersey.core.util.Base64;
 
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
@@ -42,7 +41,7 @@ public class Tile
         try
         {
             return Base64.decode(data);
-        } catch (Base64DecodingException e)
+        } catch (Exception e)
         {
             e.printStackTrace();
             return null;
@@ -54,10 +53,7 @@ public class Tile
         try
         {
             return ImageIO.read(new ByteArrayInputStream(Base64.decode(data)));
-        } catch (Base64DecodingException e)
-        {
-            e.printStackTrace();
-        } catch (IOException e)
+        } catch (Exception e)
         {
             e.printStackTrace();
         }
@@ -76,7 +72,7 @@ public class Tile
         try
         {
             ImageIO.write(img, "png", stream);
-            data = Base64.encode(stream.toByteArray());
+            data = new String(Base64.encode(stream.toByteArray()));
         } catch (IOException e)
         {
             e.printStackTrace();
