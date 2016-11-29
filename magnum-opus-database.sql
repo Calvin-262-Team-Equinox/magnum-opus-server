@@ -18,7 +18,7 @@ CREATE TABLE Painter (
 
 CREATE TABLE Canvas (
 	ID SERIAL PRIMARY KEY,
-	userID integer REFERENCES Painter(ID) NOT NULL,
+	painterID integer REFERENCES Painter(ID) NOT NULL,
 	time timestamp NOT NULL,
 	name varchar(50) NOT NULL
 	);
@@ -46,7 +46,7 @@ INSERT INTO Painter (userName, emailAddress) VALUES
 	('caj7', '2016-11-01 08:00:00'),
 	('JahnDavis27', '2016-11-01 08:00:00');
 
-INSERT INTO Canvas (userID, time, name) VALUES
+INSERT INTO Canvas (painterID, time, name) VALUES
 	(1, '2016-11-01 08:00:00', 'Bob'),
 	(2, '2016-11-01 08:00:00', 'Picture'),
 	(4, '2016-11-01 08:00:00', 'Things Im Looking Forward To'),
@@ -59,3 +59,14 @@ INSERT INTO Tile (canvasID, xCoordinate, yCoordinate, data, time, version) VALUE
 	(2, 30, 58, 'PNG data', '2016-11-01 08:00:00', 2),
 	(3, 34, 98, 'PNG data', '2016-11-01 08:00:00', 1),
 	(4, 26, 83, 'PNG data', '2016-11-01 08:00:00', 1);
+
+-- Add sample queries.
+
+-- Select all the user names of the painters
+SELECT userName FROM Painter;
+
+-- Select the name of all the canvases created by the painter with user name 'alpha0010'
+SELECT Canvas.name FROM Canvas JOIN Painter ON painterID = Painter.ID WHERE userName = 'alpha0010';
+
+-- Select all the tiles for the canvas with id 1
+SELECT * FROM Tile WHERE canvasID = 1;
