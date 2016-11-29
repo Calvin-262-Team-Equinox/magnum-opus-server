@@ -40,19 +40,27 @@ public class CanvasResource
      * @param canvasID    the id of the canvas
      * @param xCoordinate the x coordinate of the tile
      * @param yCoordinate the y coordinate of the tile
+     * @param version     the tile version the client already has
      * @return a JSON version of the tile record, if any, with the given id
      */
     @GET
-    @Path("/tile/{canvasID}/{xCoordinate}/{yCoordinate}")
+    @Path("/tile/{canvasID}/{xCoordinate}/{yCoordinate}/{version}")
     @Produces("application/json")
     public String getTile(
             @PathParam("canvasID") int canvasID,
             @PathParam("xCoordinate") int xCoordinate,
-            @PathParam("yCoordinate") int yCoordinate)
+            @PathParam("yCoordinate") int yCoordinate,
+            @PathParam("version") int version)
     {
         try
         {
-            return new Gson().toJson(retrieveCanvasTile(canvasID, xCoordinate, yCoordinate));
+            Tile tile = retrieveCanvasTile(canvasID, xCoordinate, yCoordinate);
+            if (tile.getVersion() <= version)
+            {
+                // No need to send duplicate data.
+                tile.setData("");
+            }
+            return new Gson().toJson(tile);
         } catch (Exception e)
         {
             e.printStackTrace();
@@ -60,6 +68,14 @@ public class CanvasResource
         return null;
     }
 
+    /**
+     * POST method that updates a particular tile
+     *
+     * @param canvasID    the id of the canvas
+     * @param xCoordinate the x coordinate of the tile
+     * @param yCoordinate the y coordinate of the tile
+     * @return a JSON version of the tile record, if any, with the given id
+     */
     @POST
     @Path("/update/tile/{canvasID}/{xCoordinate}/{yCoordinate}")
     @Consumes("application/json")
@@ -87,20 +103,25 @@ public class CanvasResource
                 {
                     return null;
                 }
+                // First version of new tile.
+                userUpdateTile.setVersion(1);
                 upsertTile(userUpdateTile, canvasID, xCoordinate, yCoordinate);
                 return tileData;
             }
 
             if (userUpdateImg == null)
             {
+                // No (valid) update sent?
                 return new Gson().toJson(baseTile);
             }
 
+            // Compute and save updates. TODO: handle race condition.
             Graphics dc = baseImg.getGraphics();
             dc.drawImage(userUpdateImg, 0, 0, null);
             dc.dispose();
 
             baseTile.setData(baseImg);
+            baseTile.setVersion(baseTile.getVersion() + 1);
             upsertTile(baseTile, canvasID, xCoordinate, yCoordinate);
 
             return new Gson().toJson(baseTile);
@@ -183,6 +204,9 @@ public class CanvasResource
         return tile;
     }
 
+    /*
+     * Utility method to update a tile, or insert if it does not exist.
+     */
     private void upsertTile(
             Tile tile,
             int canvasID,
