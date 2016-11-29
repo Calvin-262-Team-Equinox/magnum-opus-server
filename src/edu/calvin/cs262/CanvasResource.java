@@ -2,6 +2,7 @@ package edu.calvin.cs262;
 
 import com.google.gson.Gson;
 import com.sun.jersey.api.container.httpserver.HttpServerFactory;
+import com.sun.jersey.core.util.Base64;
 import com.sun.net.httpserver.HttpServer;
 
 import javax.ws.rs.GET;
@@ -10,6 +11,8 @@ import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
 import javax.ws.rs.Consumes;
+import java.awt.Graphics;
+import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.sql.*;
 
@@ -37,19 +40,27 @@ public class CanvasResource
      * @param canvasID    the id of the canvas
      * @param xCoordinate the x coordinate of the tile
      * @param yCoordinate the y coordinate of the tile
+     * @param version     the tile version the client already has
      * @return a JSON version of the tile record, if any, with the given id
      */
     @GET
-    @Path("/tile/{canvasID}/{xCoordinate}/{yCoordinate}")
+    @Path("/tile/{canvasID}/{xCoordinate}/{yCoordinate}/{version}")
     @Produces("application/json")
     public String getTile(
             @PathParam("canvasID") int canvasID,
             @PathParam("xCoordinate") int xCoordinate,
-            @PathParam("yCoordinate") int yCoordinate)
+            @PathParam("yCoordinate") int yCoordinate,
+            @PathParam("version") int version)
     {
         try
         {
-            return new Gson().toJson(retrieveCanvas(canvasID, xCoordinate, yCoordinate));
+            Tile tile = retrieveCanvasTile(canvasID, xCoordinate, yCoordinate);
+            if (tile.getVersion() <= version)
+            {
+                // No need to send duplicate data.
+                tile.setData("");
+            }
+            return new Gson().toJson(tile);
         } catch (Exception e)
         {
             e.printStackTrace();
@@ -57,11 +68,19 @@ public class CanvasResource
         return null;
     }
 
+    /**
+     * POST method that updates a particular tile
+     *
+     * @param canvasID    the id of the canvas
+     * @param xCoordinate the x coordinate of the tile
+     * @param yCoordinate the y coordinate of the tile
+     * @return a JSON version of the tile record, if any, with the given id
+     */
     @POST
     @Path("/update/tile/{canvasID}/{xCoordinate}/{yCoordinate}")
     @Consumes("application/json")
     @Produces("application/json")
-    public String updateTile(
+    public String postUpdateTile(
             @PathParam("canvasID") int canvasID,
             @PathParam("xCoordinate") int xCoordinate,
             @PathParam("yCoordinate") int yCoordinate,
@@ -69,9 +88,43 @@ public class CanvasResource
     {
         try
         {
-            Tile tile = new Gson().fromJson(tileData, Tile.class);
-            tile.setVersion(tile.getVersion() + 1); // TODO: Useful processing...
-            return new Gson().toJson(tile);
+            Tile userUpdateTile = new Gson().fromJson(tileData, Tile.class);
+            BufferedImage userUpdateImg = userUpdateTile.getData();
+
+            Tile baseTile = retrieveCanvasTile(canvasID, xCoordinate, yCoordinate);
+            BufferedImage baseImg = null;
+            if (baseTile != null)
+            {
+                baseImg = baseTile.getData();
+            }
+            if (baseImg == null)
+            {
+                if (userUpdateImg == null)
+                {
+                    return null;
+                }
+                // First version of new tile.
+                userUpdateTile.setVersion(1);
+                upsertTile(userUpdateTile, canvasID, xCoordinate, yCoordinate);
+                return tileData;
+            }
+
+            if (userUpdateImg == null)
+            {
+                // No (valid) update sent?
+                return new Gson().toJson(baseTile);
+            }
+
+            // Compute and save updates. TODO: handle race condition.
+            Graphics dc = baseImg.getGraphics();
+            dc.drawImage(userUpdateImg, 0, 0, null);
+            dc.dispose();
+
+            baseTile.setData(baseImg);
+            baseTile.setVersion(baseTile.getVersion() + 1);
+            upsertTile(baseTile, canvasID, xCoordinate, yCoordinate);
+
+            return new Gson().toJson(baseTile);
         } catch (Exception e)
         {
             e.printStackTrace();
@@ -93,10 +146,11 @@ public class CanvasResource
      * Utility method that does the database query, potentially throwing an SQLException,
      * returning a tile object (or null).
      */
-    private Tile retrieveCanvas(
+    private Tile retrieveCanvasTile(
             int canvasID,
             int xCoordinate,
-            int yCoordinate) throws Exception
+            int yCoordinate
+    )
     {
         Connection connection = null;
         PreparedStatement statement = null;
@@ -118,21 +172,92 @@ public class CanvasResource
             rs = statement.executeQuery();
             if (rs.next())
             {
-                tile = new Tile(rs.getString("data"), rs.getInt("version"));
+                tile = new Tile(
+                        new String(Base64.encode(rs.getBytes("data"))),
+                        rs.getInt("version")
+                );
             }
         } catch (SQLException e)
         {
-            throw (e);
+            e.printStackTrace();
         } finally
         {
-            rs.close();
-            statement.close();
-            connection.close();
+            try
+            {
+                if (rs != null)
+                {
+                    rs.close();
+                }
+                if (statement != null)
+                {
+                    statement.close();
+                }
+                if (connection != null)
+                {
+                    connection.close();
+                }
+            } catch (SQLException e)
+            {
+                e.printStackTrace();
+            }
         }
         return tile;
     }
 
-    /** Main *****************************************************/
+    /*
+     * Utility method to update a tile, or insert if it does not exist.
+     */
+    private void upsertTile(
+            Tile tile,
+            int canvasID,
+            int xCoordinate,
+            int yCoordinate
+    )
+    {
+        Connection connection = null;
+        PreparedStatement statement = null;
+        try
+        {
+            connection = DriverManager.getConnection(DB_URI, DB_LOGIN_ID, DB_PASSWORD);
+            statement = connection.prepareStatement(
+                    "INSERT INTO Tile (canvasID, xCoordinate, yCoordinate, data, time, version)"
+                            + " VALUES (?, ?, ?, ?, current_timestamp, ?)"
+                            + " ON CONFLICT (canvasID, xCoordinate, yCoordinate)"
+                            + " DO UPDATE SET"
+                            + " data = EXCLUDED.data,"
+                            + " time = EXCLUDED.time,"
+                            + " version = EXCLUDED.version"
+            );
+            statement.setInt(1, canvasID);
+            statement.setInt(2, xCoordinate);
+            //noinspection SuspiciousNameCombination
+            statement.setInt(3, yCoordinate);
+            statement.setBytes(4, tile.getRawData());
+            statement.setInt(5, tile.getVersion());
+            statement.executeUpdate();
+        } catch (SQLException e)
+        {
+            e.printStackTrace();
+        } finally
+        {
+            try
+            {
+                if (statement != null)
+                {
+                    statement.close();
+                }
+                if (connection != null)
+                {
+                    connection.close();
+                }
+            } catch (SQLException e)
+            {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    /* Main *****************************************************/
 
     /**
      * Run this main method to fire up the service.

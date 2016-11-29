@@ -1,5 +1,13 @@
 package edu.calvin.cs262;
 
+import com.sun.jersey.core.util.Base64;
+
+import javax.imageio.ImageIO;
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+
 /**
  * A Tile class (POJO) for the tile relation
  */
@@ -28,14 +36,47 @@ public class Tile
         this.version = version;
     }
 
-    public String getData()
+    public byte[] getRawData()
     {
-        return data;
+        try
+        {
+            return Base64.decode(data);
+        } catch (Exception e)
+        {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
+    public BufferedImage getData()
+    {
+        try
+        {
+            return ImageIO.read(new ByteArrayInputStream(Base64.decode(data)));
+        } catch (Exception e)
+        {
+            e.printStackTrace();
+        }
+
+        return null;
     }
 
     public void setData(String data)
     {
         this.data = data;
+    }
+
+    public void setData(BufferedImage img)
+    {
+        ByteArrayOutputStream stream = new ByteArrayOutputStream();
+        try
+        {
+            ImageIO.write(img, "png", stream);
+            data = new String(Base64.encode(stream.toByteArray()));
+        } catch (IOException e)
+        {
+            e.printStackTrace();
+        }
     }
 
 }
