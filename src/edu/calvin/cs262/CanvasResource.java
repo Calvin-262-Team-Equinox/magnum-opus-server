@@ -55,7 +55,11 @@ public class CanvasResource
         try
         {
             Tile tile = retrieveCanvasTile(canvasID, xCoordinate, yCoordinate);
-            if (tile.getVersion() <= version)
+            if (tile == null)
+            {
+                return null;
+            }
+            else if (tile.getVersion() <= version)
             {
                 // No need to send duplicate data.
                 tile.setData("");
@@ -132,6 +136,32 @@ public class CanvasResource
         return null;
     }
 
+    /**
+     * POST method to create a new canvas
+     *
+     * @param canvasName  the name of the canvas
+     * @return a JSON version of the tile record, if any, with the given id
+     */
+    @POST
+    @Path("/create/canvas/{canvasName}")
+    @Consumes("application/json")
+    @Produces("application/json")
+    public String postCreateCanvas(
+            @PathParam("canvasName") String canvasName,
+            String tileData)
+    {
+        try
+        {
+            int canvasID = createNewCanvas(canvasName);
+            return new Gson().toJson(canvasID);
+
+        } catch (Exception e)
+        {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
     /* DBMS Utility Functions *********************************************/
 
     /**
@@ -139,7 +169,7 @@ public class CanvasResource
      */
     private static final String DB_URI = "jdbc:postgresql://localhost:5432/magnum_opus";
     private static final String DB_LOGIN_ID = "postgres";
-    private static final String DB_PASSWORD = "Listen-Anywhere-6";
+    private static final String DB_PASSWORD = "postgres";
     private static final String PORT = "8085";
 
     /*
@@ -255,6 +285,50 @@ public class CanvasResource
                 e.printStackTrace();
             }
         }
+    }
+
+    private int createNewCanvas(String canvasName )
+    {
+        Connection connection = null;
+        PreparedStatement statement = null;
+        try
+        {
+            connection = DriverManager.getConnection(DB_URI, DB_LOGIN_ID, DB_PASSWORD);
+            statement = connection.prepareStatement(
+                    "INSERT INTO Canvas (painterID, time, name) VALUES (1, current_timestamp, ?)",
+                    Statement.RETURN_GENERATED_KEYS
+            );
+            statement.setString( 1, canvasName );
+            statement.executeUpdate();
+            ResultSet generatedKeys = statement.getGeneratedKeys();
+
+            int canvasID;
+            if( generatedKeys.next()){
+                canvasID = generatedKeys.getInt(1);
+                return canvasID;
+            }
+
+        } catch (SQLException e)
+        {
+            e.printStackTrace();
+        } finally
+        {
+            try
+            {
+                if (statement != null)
+                {
+                    statement.close();
+                }
+                if (connection != null)
+                {
+                    connection.close();
+                }
+            } catch (SQLException e)
+            {
+                e.printStackTrace();
+            }
+        }
+        return 0;
     }
 
     /* Main *****************************************************/
