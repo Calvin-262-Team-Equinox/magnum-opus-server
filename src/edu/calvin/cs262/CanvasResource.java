@@ -73,6 +73,28 @@ public class CanvasResource
     }
 
     /**
+     * GET method that returns a particular canvas
+     *
+     * @param name          the name of the canvas
+     *
+     */
+    @GET
+    @Path("/search/canvas/{name}")
+    @Produces("application/json")
+    public String getCanvas(
+            @PathParam("name") String name)
+    {
+        try{
+            PaintCanvas canvas = retrieveCanvas(name);
+            return new Gson().toJson(canvas);
+        } catch (Exception e)
+        {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    /**
      * POST method that updates a particular tile
      *
      * @param canvasID    the id of the canvas
@@ -235,6 +257,61 @@ public class CanvasResource
     }
 
     /*
+   * Utility method that does the database query, potentially throwing an SQLException,
+   * returning a canvas object (or null).
+   */
+    private PaintCanvas retrieveCanvas(
+            String name
+    )
+    {
+        Connection connection = null;
+        PreparedStatement statement = null;
+        ResultSet rs = null;
+        PaintCanvas canvas = null;
+        try
+        {
+            connection = DriverManager.getConnection(DB_URI, DB_LOGIN_ID, DB_PASSWORD);
+            statement = connection.prepareStatement(
+                    "SELECT ID, name FROM Canvas"
+                            + " WHERE name = ?"
+            );
+            statement.setString(1, name);
+            rs = statement.executeQuery();
+            if (rs.next())
+            {
+                canvas = new PaintCanvas(
+                        rs.getInt("ID"),
+                        rs.getString("name")
+                );
+            }
+        } catch (SQLException e)
+        {
+            e.printStackTrace();
+        } finally
+        {
+            try
+            {
+                if (rs != null)
+                {
+                    rs.close();
+                }
+                if (statement != null)
+                {
+                    statement.close();
+                }
+                if (connection != null)
+                {
+                    connection.close();
+                }
+            } catch (SQLException e)
+            {
+                e.printStackTrace();
+            }
+        }
+        return canvas;
+    }
+
+    /*
      * Utility method to update a tile, or insert if it does not exist.
      */
     private void upsertTile(
@@ -285,50 +362,6 @@ public class CanvasResource
                 e.printStackTrace();
             }
         }
-    }
-
-    private int createNewCanvas(String canvasName )
-    {
-        Connection connection = null;
-        PreparedStatement statement = null;
-        try
-        {
-            connection = DriverManager.getConnection(DB_URI, DB_LOGIN_ID, DB_PASSWORD);
-            statement = connection.prepareStatement(
-                    "INSERT INTO Canvas (painterID, time, name) VALUES (1, current_timestamp, ?)",
-                    Statement.RETURN_GENERATED_KEYS
-            );
-            statement.setString( 1, canvasName );
-            statement.executeUpdate();
-            ResultSet generatedKeys = statement.getGeneratedKeys();
-
-            int canvasID;
-            if( generatedKeys.next()){
-                canvasID = generatedKeys.getInt(1);
-                return canvasID;
-            }
-
-        } catch (SQLException e)
-        {
-            e.printStackTrace();
-        } finally
-        {
-            try
-            {
-                if (statement != null)
-                {
-                    statement.close();
-                }
-                if (connection != null)
-                {
-                    connection.close();
-                }
-            } catch (SQLException e)
-            {
-                e.printStackTrace();
-            }
-        }
-        return 0;
     }
 
     /* Main *****************************************************/
