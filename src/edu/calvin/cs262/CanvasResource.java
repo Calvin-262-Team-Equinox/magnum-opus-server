@@ -169,7 +169,7 @@ public class CanvasResource
      */
     private static final String DB_URI = "jdbc:postgresql://localhost:5432/magnum_opus";
     private static final String DB_LOGIN_ID = "postgres";
-    private static final String DB_PASSWORD = "postgres";
+    private static final String DB_PASSWORD = "Listen-Anywhere-6";
     private static final String PORT = "8085";
 
     /*
