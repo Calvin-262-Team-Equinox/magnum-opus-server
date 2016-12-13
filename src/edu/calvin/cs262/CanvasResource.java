@@ -153,7 +153,7 @@ public class CanvasResource
         try
         {
             int canvasID = createNewCanvas(canvasName);
-            return new Gson().toJson(canvasID);
+            return "{\"key\":" + canvasID + "}";
 
         } catch (Exception e)
         {
