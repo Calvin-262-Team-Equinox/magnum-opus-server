@@ -364,6 +364,51 @@ public class CanvasResource
         }
     }
 
+    private int createNewCanvas(String canvasName)
+    {
+        Connection connection = null;
+        PreparedStatement statement = null;
+        try
+        {
+            connection = DriverManager.getConnection(DB_URI, DB_LOGIN_ID, DB_PASSWORD);
+            statement = connection.prepareStatement(
+                    "INSERT INTO Canvas (painterID, time, name) VALUES (1, current_timestamp, ?)",
+                    Statement.RETURN_GENERATED_KEYS
+            );
+            statement.setString(1, canvasName);
+            statement.executeUpdate();
+            ResultSet generatedKeys = statement.getGeneratedKeys();
+
+            int canvasID;
+            if (generatedKeys.next())
+            {
+                canvasID = generatedKeys.getInt(1);
+                return canvasID;
+            }
+
+        } catch (SQLException e)
+        {
+            e.printStackTrace();
+        } finally
+        {
+            try
+            {
+                if (statement != null)
+                {
+                    statement.close();
+                }
+                if (connection != null)
+                {
+                    connection.close();
+                }
+            } catch (SQLException e)
+            {
+                e.printStackTrace();
+            }
+        }
+        return 0;
+    }
+
     /* Main *****************************************************/
 
     /**
